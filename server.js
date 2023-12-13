@@ -13,7 +13,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-const Item = require('./models/itemModel.js');
+const Item = require('./models/item.js');
 
 // Get all items
 app.get('/api/items', async (req, res) => {
@@ -22,6 +22,26 @@ app.get('/api/items', async (req, res) => {
     res.json(items);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// Search route
+app.get('/api/items/search', async (req, res) => {
+  try {
+    const searchTerm = req.query.q; // Get the search term from query params
+    if (!searchTerm) {
+      // Optional: Decide how to handle empty search term
+      return res.json([]); // For example, return an empty array
+    }
+
+    // Search logic: find items that match the search term
+    const items = await Item.find({ 
+      name: { $regex: searchTerm, $options: 'i' } // Case-insensitive regex search
+    });
+
+    res.json(items); // Send the search results back to the client
+  } catch (err) {
+    res.status(500).json({ message: err.message }); // Handle potential errors
   }
 });
 

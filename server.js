@@ -93,5 +93,42 @@ app.patch('/api/items/:id', async (req, res) => {
   }
 });
 
+app.get('/api/lists', async (req, res) => {
+  try {
+    const lists = await List.find(); // Adjust the query as needed
+    res.json(lists);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+// get all lists
+app.get('/api/lists', async (req, res) => {
+  try {
+    const lists = await List.find(); // Adjust the query as needed
+    res.json(lists);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+// get a single list by id
+app.get('/api/lists/:id', async (req, res) => {
+  try {
+    const list = await List.findById(req.params.id); // Adjust the query as needed
+    res.json(list);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+// add a new list
+
+// delete a list
+
+// update a list
+
+
+
 
 

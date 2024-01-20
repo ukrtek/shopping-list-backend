@@ -140,6 +140,20 @@ app.delete('/api/lists/:id', async (req, res) => {
   }
 });
 
+// add an item to a list
+app.post('/api/lists/:id/items', async (req, res) => {
+  try {
+    const list = await List.findById(req.params.id);
+    if (!list) throw Error('List not found');
+    const item = new Item({ name: req.body.name });
+    list.items.push(item);
+    const updatedList = await list.save();
+    res.status(201).json(updatedList);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 // update a list
 app.patch('/api/lists/:id', async (req, res) => {
   try {

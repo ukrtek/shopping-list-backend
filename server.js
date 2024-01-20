@@ -15,6 +15,9 @@ app.listen(PORT, () => {
 
 const Item = require('./models/item.js');
 
+const List = require('./models/list.js');
+
+
 // Get all items
 app.get('/api/items', async (req, res) => {
   try {
@@ -93,12 +96,14 @@ app.patch('/api/items/:id', async (req, res) => {
   }
 });
 
-app.get('/api/lists', async (req, res) => {
+// create a new list
+app.post('/api/lists', async (req, res) => {
   try {
-    const lists = await List.find(); // Adjust the query as needed
-    res.json(lists);
+    const list = new List({ name: req.body.name });
+    const newList = await list.save();
+    res.status(201).json(newList);
   } catch (err) {
-    res.status(500).send(err);
+    res.status(400).json({ message: err.message });
   }
 });
 
@@ -122,11 +127,31 @@ app.get('/api/lists/:id', async (req, res) => {
   }
 });
 
-// add a new list
-
 // delete a list
+app.delete('/api/lists/:id', async (req, res) => {
+  try {
+    const removedList = await List.deleteOne({_id: req.params.id});
+    if (!removedList) {
+      return res.status(404).json({ message: 'List not found' });
+    }
+    res.json(removedList);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // update a list
+app.patch('/api/lists/:id', async (req, res) => {
+  try {
+    const list = await List.findById(req.params.id);
+    if (!list) throw Error('List not found');
+    list.name = req.body.name;
+    const updatedList = await list.save();
+    res.json(updatedList);
+  } catch (err) {
+    res.status(404).json({ message: err.message });
+  }
+});
 
 
 

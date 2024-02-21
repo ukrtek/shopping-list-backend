@@ -110,7 +110,7 @@ app.post('/api/lists', async (req, res) => {
 // get all lists
 app.get('/api/lists', async (req, res) => {
   try {
-    const lists = await List.find(); // Adjust the query as needed
+    const lists = await List.find();
     res.json(lists);
   } catch (err) {
     res.status(500).send(err);
@@ -153,6 +153,23 @@ app.post('/api/lists/:id/items', async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+
+// delete an item from a list
+app.delete('/api/lists/:listId/items/:itemId', async (req, res) => {
+  try {
+    const { listId, itemId } = req.params;
+    const list = await List.findById(listId);
+    if (!list) throw new Error('List not found');
+
+    list.items = list.items.filter(item => item.id !== itemId);
+    await list.save();
+
+    res.status(200).json({ message: 'Item deleted successfully' });
+  } catch (err) {
+    res.status(404).json({ message: err.message });
+  }
+});
+
 
 // update a list
 app.patch('/api/lists/:id', async (req, res) => {

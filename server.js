@@ -2,191 +2,201 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-// Include the MongoDB connection
 require('./db');
 
 app.use(cors());
-app.use(express.json()); // for parsing application/json
+app.use(express.json()); // for parsing application
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-const Item = require('./models/item.js');
-
-const List = require('./models/list.js');
+const User = require('./models/schema.js');
 
 
-// Get all items
-app.get('/api/items', async (req, res) => {
+// Get all lists for a user
+app.get('/api/lists', async (req, res) => {
   try {
-    const items = await Item.find();
+    const userId = "65eb51f836d71edaa0911203";
+
+    const user = await User.findById(userId).select('lists');
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    res.json(user.lists);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get a single list for a user
+app.get('/api/lists/:listId', async (req, res) => {
+  try {
+    const userId = "65eb51f836d71edaa0911203";
+    const listId = req.params.listId;
+  
+
+    const user = await User.findById(userId).select('lists');
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    const specificList = user.lists.find(list => list.listId === listId);
+    if (!specificList) {
+      return res.status(404).send('List not found');
+    }
+
+    res.json(specificList);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+  
+  
+  
+
+// Get all items for a list
+app.get('/api/lists/:listId/items', async (req, res) => {
+  try {
+    const items = await User.findById(req.params.userId).select('lists')
+      .then(user => user.lists.id(req.params.listId).items);
     res.json(items);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Search route
-app.get('/api/items/search', async (req, res) => {
+// Get a set of items for a user
+app.get('/api/items/unique', async (req, res) => {
   try {
-    const searchTerm = req.query.q; // Get the search term from query params
-    if (!searchTerm) {
-      // Optional: Decide how to handle empty search term
-      return res.json([]); // For example, return an empty array
+    const userId = req.query.userId; // Assuming userId is passed as a query parameter
+
+    if (!userId) {
+      return res.status(400).send('User ID is required');
     }
 
-    // Search logic: find items that match the search term
-    const items = await Item.find({ 
-      name: { $regex: searchTerm, $options: 'i' } // Case-insensitive regex search
-    });
+    // Fetch the user document by userId
+    const user = await User.findOne({ userId: userId });
 
-    res.json(items); // Send the search results back to the client
-  } catch (err) {
-    res.status(500).json({ message: err.message }); // Handle potential errors
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    // Extract items from all lists and flatten the array
+    const allItems = user.lists.flatMap(list => list.items);
+
+    // Create a set to get unique items based on the item name
+    const uniqueItems = Array.from(new Set(allItems.map(item => item.name)))
+      .map(name => {
+        // Find and return the first item that matches the unique name
+        return allItems.find(item => item.name === name);
+      });
+
+    // Send the unique items as a response
+    res.json(uniqueItems);
+  } catch (error) {
+    console.error('Error in /api/items/unique:', error);
+    res.status(500).send('An error occurred while fetching unique items');
   }
 });
 
-// Get a single item
-app.get('/api/items/:id', async (req, res) => {
+
+// Add a new item to list
+app.post('/api/lists/:listId/items', async (req, res) => {
   try {
-    const item = await Item.findById(req.params.id);
+    const userId = req.params.userId;
+    const listId = req.params.listId;
+    const newItem = req.body;
+
+    const user = await User.findById(userId);
+    const list = user.lists.id(listId);
+    list.items.push(newItem);
+    await user.save();
+
+    res.status(201).json(newItem);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+// Delete an item
+app.delete('/api/lists/:listId/items/:itemId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const listId = req.params.listId;
+    const itemId = req.params.itemId;
+
+    const user = await User.findById(userId);
+    const list = user.lists.id(listId);
+    list.items.id(itemId).remove();
+    await user.save();
+
+    res.status(204).end();
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+// Update an item (rename, change quantity, etc.)
+app.put('/api/lists/:listId/items/:itemId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const listId = req.params.listId;
+    const itemId = req.params.itemId;
+    const updatedItem = req.body;
+
+    const user = await User.findById(userId);
+    const list = user.lists.id(listId);
+    const item = list.items.id(itemId);
+    item.set(updatedItem);
+    await user.save();
+
     res.json(item);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Add a new item
-app.post('/api/items', async (req, res) => {
-  const item = new Item({ name: req.body.name });
-  try {
-    const newItem = await item.save();
-    res.status(201).json(newItem);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
-
-// Delete an item
-app.delete('/api/items/:id', async (req, res) => {
-  try {
-    const removedItem = await Item.deleteOne({_id: req.params.id});
-    if (!removedItem) {
-      return res.status(404).json({ message: 'Item not found' });
-    }
-    res.json(removedItem);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-
-// Update an item - we use PATCH instead of PUT because we only want to update the name
-app.patch('/api/items/:id', async (req, res) => {
-  try {
-    const item = await Item.findById(req.params.id);
-    if (!item) throw Error('Item not found');
-    item.name = req.body.name;
-    const updatedItem = await item.save();
-    res.json(updatedItem);
-  } catch (err) {
-    res.status(404).json({ message: err.message });
-  }
-});
 
 // create a new list
 app.post('/api/lists', async (req, res) => {
   try {
-    const list = new List({ name: req.body.name });
-    const newList = await list.save();
+    const userId = req.params.userId;
+    const newList = req.body;
+
+    const user = await User.findById(userId);
+    user.lists.push(newList);
+    await user.save();
+
     res.status(201).json(newList);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
-
-// get all lists
-app.get('/api/lists', async (req, res) => {
-  try {
-    const lists = await List.find();
-    res.json(lists);
-  } catch (err) {
-    res.status(500).send(err);
-  }
-});
-
-// get a single list by id
-app.get('/api/lists/:id', async (req, res) => {
-  try {
-    const list = await List.findById(req.params.id); // Adjust the query as needed
-    res.json(list);
-  } catch (err) {
-    res.status(500).send(err);
-  }
-});
-
-// delete a list
-app.delete('/api/lists/:id', async (req, res) => {
-  try {
-    const removedList = await List.deleteOne({_id: req.params.id});
-    if (!removedList) {
-      return res.status(404).json({ message: 'List not found' });
-    }
-    res.json(removedList);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
+
+// get a single list by id
+
+
+
+
+
+// delete a list
+
+
+
 // add an item to a list
-app.post('/api/lists/:id/items', async (req, res) => {
-  try {
-    const list = await List.findById(req.params.id);
-    if (!list) throw Error('List not found');
 
-    const item = new Item({ name: req.body.name });
-    list.items.push(item);
-
-    await list.save();
-
-    res.status(201).json(item);
-    
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
 
 // delete an item from a list
-app.delete('/api/lists/:listId/items/:itemId', async (req, res) => {
-  try {
-    const { listId, itemId } = req.params;
-    const list = await List.findById(listId);
-    if (!list) throw new Error('List not found');
 
-    list.items = list.items.filter(item => item.id !== itemId);
-    await list.save();
-
-    res.status(200).json({ message: 'Item deleted successfully' });
-  } catch (err) {
-    res.status(404).json({ message: err.message });
-  }
-});
 
 
 // update a list
-app.patch('/api/lists/:id', async (req, res) => {
-  try {
-    const list = await List.findById(req.params.id);
-    if (!list) throw Error('List not found');
-    list.name = req.body.name;
-    const updatedList = await list.save();
-    res.json(updatedList);
-  } catch (err) {
-    res.status(404).json({ message: err.message });
-  }
-});
 
 
 

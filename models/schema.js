@@ -1,29 +1,31 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-
 
 const itemSchema = new Schema({
   itemId: { type: String, required: true },
   name: { type: String, required: true },
-  quantity: { type: Number, required: true }
+  quantity: { type: Number, required: true },
 });
-
 
 const listSchema = new Schema({
   listId: { type: String, required: true },
   title: { type: String, required: true },
-  items: [itemSchema] 
+  items: [itemSchema],
 });
-
 
 const userSchema = new Schema({
   userId: { type: String, required: true },
-  username: { type: String, required: true },
-  email: { type: String, required: true },
-  passwordHash: { type: String, required: true },
-  lists: [listSchema] 
+  username: { type: String, required: false },
+  email: { type: String, required: false },
+  passwordHash: { type: String, required: false },
+  lists: [listSchema],
 });
 
-
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("users", userSchema);
 module.exports = User;
+
+const List = mongoose.model("lists", listSchema);
+module.exports = List;
+
+const Item = mongoose.model("items", itemSchema);
+module.exports = Item;

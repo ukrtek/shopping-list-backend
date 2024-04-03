@@ -21,11 +21,11 @@ const List = require("./models/schema.js");
 app.post("/api/lists", async (req, res) => {
   try {
     const userId = req.body.userId;
-    const user = await User.findOne({ userId: userId });
-    console.log(user);
+    let user = await User.findOne({ userId: userId });
+
     // tmp kosteel
     if (!user) {
-      await User.create({ userId: userId });
+      user = await User.create({ userId: userId });
     }
 
     const name = req.body.name;

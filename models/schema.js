@@ -21,11 +21,5 @@ const userSchema = new Schema({
   lists: [listSchema],
 });
 
-const User = mongoose.model("users", userSchema);
+const User = mongoose.model("User", userSchema);
 module.exports = User;
-
-const List = mongoose.model("lists", listSchema);
-module.exports = List;
-
-const Item = mongoose.model("items", itemSchema);
-module.exports = Item;

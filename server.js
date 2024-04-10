@@ -19,47 +19,44 @@ const List = require("./models/schema.js");
 
 // Create a new list for a user
 app.post("/api/lists", async (req, res) => {
-    const userId = req.body.userId;
-    try {
-      let user = await User.findOne({ userId: userId });
+  const userId = req.body.userId;
+  let user = await User.findOne({ userId: userId });
 
-      // tmp kosteel
-      if (!user) {
-        user = await User.create({ userId: userId });
-      }
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
-    }
+  // tmp kosteel
+  if (!user) {
+    user = await User.create({ userId: userId });
+  }
 
-    const name = req.body.name;
+  const name = req.body.name;
 
-    // check if name is valid: not empty, not more than 20 characters
-    if (!name || name.length > 20 || name.trim().length === 0) {
-      return res.status(400).json({
-        message: "Invalid name - must be a string of max 20 characters",
-      });
-    }
+  // check if name is valid: not empty, not more than 20 characters
+  if (!name || name.length > 20 || name.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid name - must be a string of max 20 characters",
+    });
+  }
 
-    const id = Math.random().toString(36).substring(2, 9);
+  const id = Math.random().toString(36).substring(2, 9);
 
-    const list = {
-      listId: id,
-      title: name,
-      items: [],
-    };
+  const list = {
+    listId: id,
+    title: name,
+    items: [],
+  };
 
-    user.lists.push(list);
+  user.lists.push(list);
 
-    try {
-      await user.save();
-      res.status(201).json({ message: "List was added successfully" });
-    }
-    catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Server error: unable to save the new list to user" });
-    }
-    
+  try {
+    await user.save();
+    res
+      .status(201)
+      .json({ message: `List with id: ${list.listId} was added successfully` });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: "Server error: unable to save the new list to user" });
+  }
 
   // this is a blank endpoint for list creating
   // my goal is to use request params: userId, name and create a new BLANK list for a user userId
@@ -83,19 +80,36 @@ app.get("/api/lists/:listId", async (req, res) => {
   const userId = req.body.userId;
   const listId = req.params.listId;
 
-  try {
-    
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
   }
+
+  if (!listId || listId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid listId",
+    });
+  }
+
+  const user = await User.findOne({ userId: userId });
+
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
+
+  const list = user.lists.find((list) => list.listId === listId);
+
+  if (!list) {
+    return res.status(404).json({
+      message: "List not found",
+    });
+  }
+
+  res.status(200).json(list);
 });
-// in positive case i will return 200 status and the list
-// in negative case i will return ...
-// negative cases: invalid userId, invalid listId, list not found
-// i think that we are not accepting anything for list name, it can be invalid
-// no empty strings, no special characters, no more than 20 characters
-// btw, in this case i will return 400 status and a message
-// server errors?
-// hint: if the endpoint has db operations, db can return error. this is an example of a server error,
-// so i will return 500 status and a message
 
 // rename a list
 
@@ -165,6 +179,72 @@ app.post("/api/lists/:listId/items", async (req, res) => {
 });
 
 // fetch a single item by id
+app.get("/api/lists/:listId/items/:itemId", async (req, res) => {
+  const userId = req.body.userId;
+  const listId = req.params.listId;
+  const itemId = req.params.itemId;
+
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
+  }
+
+  if (!listId || listId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid listId",
+    });
+  }
+
+  if (!itemId || itemId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid itemId",
+    });
+  }
+
+  try {
+    const user = await User.findOne({ userId: userId });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to fetch the user document");
+    console.error("Error: ", error);
+  }
+
+  if (!user) {
+    return res.status(400).json({
+      message: "User not found",
+    });
+  }
+
+  const list = user.lists.find((list) => list.listId === listId);
+
+  if (!list) {
+    return res.status(400).json({
+      message: "List not found",
+    });
+  }
+
+  const item = list.items.find((item) => item.itemId === itemId);
+
+  if (!item) {
+    return res.status(400).json({
+      message: "Item not found",
+    });
+  }
+
+  res.status(200).json(item);
+});
+// use request params: userId, listId, itemId and get the item
+// in positive case i will return 200 status and the list
+// in negative case i will return ...
+// negative cases: invalid userId, invalid listId, list not found
+// i think that we are not accepting anything for list name, it can be invalid
+// no empty strings, no special characters, no more than 20 characters
+// btw, in this case i will return 400 status and a message
+// server errors?
+// hint: if the endpoint has db operations, db can return error. this is an example of a server error,
+// so i will return 500 status and a message
 
 // update an item in a list (rename, change quantity, etc.)
 

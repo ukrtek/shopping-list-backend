@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const itemSchema = new Schema({
   itemId: { type: String, required: true },
   name: { type: String, required: true },
-  quantity: { type: Number, required: true },
+  quantity: { type: Number, required: false },
 });
 
 const listSchema = new Schema({

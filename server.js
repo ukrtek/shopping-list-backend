@@ -15,17 +15,21 @@ app.listen(PORT, () => {
 const User = require("./models/schema.js");
 const List = require("./models/schema.js");
 
-// lists
+// single list
 
 // Create a new list for a user
 app.post("/api/lists", async (req, res) => {
-  try {
     const userId = req.body.userId;
-    let user = await User.findOne({ userId: userId });
+    try {
+      let user = await User.findOne({ userId: userId });
 
-    // tmp kosteel
-    if (!user) {
-      user = await User.create({ userId: userId });
+      // tmp kosteel
+      if (!user) {
+        user = await User.create({ userId: userId });
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
     }
 
     const name = req.body.name;
@@ -46,13 +50,16 @@ app.post("/api/lists", async (req, res) => {
     };
 
     user.lists.push(list);
-    await user.save();
 
-    res.status(201).json({ message: "List was added successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
+    try {
+      await user.save();
+      res.status(201).json({ message: "List was added successfully" });
+    }
+    catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Server error: unable to save the new list to user" });
+    }
+    
 
   // this is a blank endpoint for list creating
   // my goal is to use request params: userId, name and create a new BLANK list for a user userId
@@ -70,9 +77,37 @@ app.post("/api/lists", async (req, res) => {
   // that's all for now
 });
 
+// get a single list by id
+// use request params: userId, listId and get the list
+app.get("/api/lists/:listId", async (req, res) => {
+  const userId = req.body.userId;
+  const listId = req.params.listId;
+
+  try {
+    
+  }
+});
+// in positive case i will return 200 status and the list
+// in negative case i will return ...
+// negative cases: invalid userId, invalid listId, list not found
+// i think that we are not accepting anything for list name, it can be invalid
+// no empty strings, no special characters, no more than 20 characters
+// btw, in this case i will return 400 status and a message
+// server errors?
+// hint: if the endpoint has db operations, db can return error. this is an example of a server error,
+// so i will return 500 status and a message
+
+// rename a list
+
+// delete a list
+
+// multiple lists
+// fetch all lists for a user
+
+//single item
+
 // add a new item to a list
 app.post("/api/lists/:listId/items", async (req, res) => {
-  console.log(req.body);
   try {
     // request params: listId, userId, name, quantity
     const userId = req.body.userId;
@@ -81,7 +116,6 @@ app.post("/api/lists/:listId/items", async (req, res) => {
     const quantity = req.body.quantity;
 
     const user = await User.findOne({ userId: userId });
-    console.log(user);
     if (!user) {
       return res.status(404).json({
         message: "User not found",
@@ -107,15 +141,20 @@ app.post("/api/lists/:listId/items", async (req, res) => {
       });
     }
 
-    res.status(200).json({ message: "Looking good so far!" });
+    const id = Math.random().toString(36).substring(2, 9);
 
-    // error if userId does not exist
-    // error if list does not exist
-    // create a new item with id, name, quantity
+    const item = {
+      itemId: id,
+      name: name,
+      quantity: quantity,
+    };
+
+    list.items.push(item);
+    await user.save();
+
+    res.status(201).json({ message: `${item.name} was added` });
     // validate name and quantity
-    // positive case: return 201 status
     // negative case: return 400 status and a message
-    // add the item to the list
     // what else can go wrong?
     // hint: if the endpoint has db operations, db can return error. this is an example of a server error,
     // so i will return 500 status and a message
@@ -125,68 +164,15 @@ app.post("/api/lists/:listId/items", async (req, res) => {
   }
 });
 
-// update an item in a list
+// fetch a single item by id
+
+// update an item in a list (rename, change quantity, etc.)
 
 // delete an item from a list
 
-// delete a list
-
-// Get all lists for a user
-// app.get('/api/lists', async (req, res) => {
-//   try {
-//     const userId = "65eb51f836d71edaa0911203";
-
-//     const user = await User.findById(userId).select('lists');
-//     if (!user) {
-//       return res.status(404).send('User not found');
-//     }
-
-//     res.json(user.lists);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// });
-
-// Get a single list for a user
-// app.get('/api/lists/:listId', async (req, res) => {
-//   try {
-//     const userId = "65eb51f836d71edaa0911203";
-//     const listId = req.params.listId;
-
-//     const user = await User.findById(userId).select('lists');
-//     if (!user) {
-//       return res.status(404).send('User not found');
-//     }
-
-//     const specificList = user.lists.find(list => list.listId === listId);
-//     if (!specificList) {
-//       return res.status(404).send('List not found');
-//     }
-
-//     res.json(specificList);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// });
-
-// get a single list
-
-// rename a list
-
-// delete a list
-
-// items
+// multiple items
 
 // Get all items from a list
-// app.get('/api/lists/:listId/items', async (req, res) => {
-//   try {
-//     const items = await User.findById(req.params.userId).select('lists')
-//       .then(user => user.lists.id(req.params.listId).items);
-//     res.json(items);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// });
 
 // Get a set of items for a user
 // app.get('/api/items/unique', async (req, res) => {
@@ -221,63 +207,3 @@ app.post("/api/lists/:listId/items", async (req, res) => {
 //     res.status(500).send('An error occurred while fetching unique items');
 //   }
 // });
-
-// Add a new item to list
-// app.post('/api/lists/:listId/items', async (req, res) => {
-//   try {
-//     const userId = req.params.userId;
-//     const listId = req.params.listId;
-//     const newItem = req.body;
-
-//     const user = await User.findById(userId);
-//     const list = user.lists.id(listId);
-//     list.items.push(newItem);
-//     await user.save();
-
-//     res.status(201).json(newItem);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// });
-
-// Delete an item from a list
-// app.delete('/api/lists/:listId/items/:itemId', async (req, res) => {
-//   try {
-//     const userId = req.params.userId;
-//     const listId = req.params.listId;
-//     const itemId = req.params.itemId;
-
-//     const user = await User.findById(userId);
-//     const list = user.lists.id(listId);
-//     list.items.id(itemId).remove();
-//     await user.save();
-
-//     res.status(204).end();
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// });
-
-// Update an item (rename, change quantity, etc.)
-// app.put('/api/lists/:listId/items/:itemId', async (req, res) => {
-//   try {
-//     const userId = req.params.userId;
-//     const listId = req.params.listId;
-//     const itemId = req.params.itemId;
-//     const updatedItem = req.body;
-
-//     const user = await User.findById(userId);
-//     const list = user.lists.id(listId);
-//     const item = list.items.id(itemId);
-//     item.set(updatedItem);
-//     await user.save();
-
-//     res.json(item);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// });
-
-// add an item to a list
-
-// delete an item from a list

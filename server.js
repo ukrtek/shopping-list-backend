@@ -13,7 +13,6 @@ app.listen(PORT, () => {
 });
 
 const User = require("./models/schema.js");
-const List = require("./models/schema.js");
 
 // single list
 
@@ -57,21 +56,6 @@ app.post("/api/lists", async (req, res) => {
       .status(500)
       .json({ message: "Server error: unable to save the new list to user" });
   }
-
-  // this is a blank endpoint for list creating
-  // my goal is to use request params: userId, name and create a new BLANK list for a user userId
-  // i am going to create a new user if userId does not exist in database
-  // then i am going to create a new blank list named req.name and add it to the user
-  // in positive case i will return 201 status and the list
-  // in negative case i will return ...
-  // by the way, what is negative case?
-  // i think that we are not accepting anything for list name, it can be invalid
-  // no empty strings, no special characters, no more than 20 characters
-  // btw, in this case i will return 400 status and a message
-  // what else can go wrong?
-  // hint: if the endpoint has db operations, db can return error. this is an example of a server error,
-  // so i will return 500 status and a message
-  // that's all for now
 });
 
 // get a single list by id
@@ -116,7 +100,44 @@ app.get("/api/lists/:listId", async (req, res) => {
 // delete a list
 
 // multiple lists
-// fetch all lists for a user
+// get all lists for a user
+app.get("/api/lists", async (req, res) => {
+  const userId = req.body.userId;
+
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
+  }
+
+  try {
+    const user = await User.findOne({ userId: userId });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json(user.lists);
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to fetch the user document");
+    console.error("Error: ", error);
+  }
+});
+
+// use request params: userId, listId, itemId and get the item
+// in positive case i will return 200 status and the list
+// in negative case i will return ...
+// negative cases: invalid userId, invalid listId, list not found
+// i think that we are not accepting anything for list name, it can be invalid
+// no empty strings, no special characters, no more than 20 characters
+// btw, in this case i will return 400 status and a message
+// server errors?
+// hint: if the endpoint has db operations, db can return error. this is an example of a server error,
+// so i will return 500 status and a message
 
 //single item
 
@@ -178,7 +199,7 @@ app.post("/api/lists/:listId/items", async (req, res) => {
   }
 });
 
-// fetch a single item by id
+// get a single item by id
 app.get("/api/lists/:listId/items/:itemId", async (req, res) => {
   const userId = req.body.userId;
   const listId = req.params.listId;
@@ -212,7 +233,7 @@ app.get("/api/lists/:listId/items/:itemId", async (req, res) => {
   }
 
   if (!user) {
-    return res.status(400).json({
+    return res.status(404).json({
       message: "User not found",
     });
   }
@@ -235,16 +256,6 @@ app.get("/api/lists/:listId/items/:itemId", async (req, res) => {
 
   res.status(200).json(item);
 });
-// use request params: userId, listId, itemId and get the item
-// in positive case i will return 200 status and the list
-// in negative case i will return ...
-// negative cases: invalid userId, invalid listId, list not found
-// i think that we are not accepting anything for list name, it can be invalid
-// no empty strings, no special characters, no more than 20 characters
-// btw, in this case i will return 400 status and a message
-// server errors?
-// hint: if the endpoint has db operations, db can return error. this is an example of a server error,
-// so i will return 500 status and a message
 
 // update an item in a list (rename, change quantity, etc.)
 

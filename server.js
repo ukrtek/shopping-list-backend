@@ -260,6 +260,82 @@ app.get("/api/lists/:listId/items/:itemId", async (req, res) => {
 // update an item in a list (rename, change quantity, etc.)
 
 // delete an item from a list
+app.delete("/api/lists/:listId/items/:itemId", async (req, res) => {
+  const userId = req.body.userId;
+  const listId = req.params.listId;
+  const itemId = req.params.itemId;
+
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
+  }
+
+  if (!listId || listId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid listId",
+    });
+  }
+
+  if (!itemId || itemId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid itemId",
+    });
+  }
+
+  let user = "";
+
+  try {
+    user = await User.findOne({ userId: userId });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to fetch the user document");
+    console.error("Error: ", error);
+  }
+
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
+
+  const list = user.lists.find((list) => list.listId === listId);
+
+  if (!list) {
+    return res.status(404).json({
+      message: "List not found",
+    });
+  }
+
+  const item = list.items.find((item) => item.itemId === itemId);
+
+  if (!item) {
+    return res.status(404).json({
+      message: "Item not found",
+    });
+  }
+
+  list.items = list.items.filter((item) => item.itemId !== itemId);
+
+  try {
+    await user.save();
+    res.status(200).json({ message: `${item.name} was deleted successfully` });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to delete the item from the list");
+    console.error("Error: ", error);
+  }
+
+  // my goal is to use request params: userId, list id, item name/id? and delete the item
+  // in positive case i will return 200 status and the item
+  // negative scenarios: user not found, list not found, item not found
+  // in negative scenario, return 400 status and a message
+  // what else can go wrong?
+  // hint: if the endpoint has db operations, db can return error. this is an example of a server error,
+  // so i will return 500 status and a message
+});
 
 // multiple items
 

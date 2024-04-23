@@ -96,8 +96,146 @@ app.get("/api/lists/:listId", async (req, res) => {
 });
 
 // rename a list
+app.patch("/api/lists/:listId", async (req, res) => {
+  // my goal is to use request params: userId, listId, and update the list name
+  const userId = req.body.userId;
+  const listId = req.params.listId;
+  const newName = req.body.name;
+
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
+  }
+
+  if (!listId || listId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid listId",
+    });
+  }
+
+  if (
+    !newName ||
+    newName.length > 20 ||
+    newName.trim().length === 0 ||
+    !newName.match(/^[a-zA-Z0-9 ]+$/)
+  ) {
+    return res.status(400).json({
+      message: "Invalid name - must be a string of max 20 characters",
+    });
+  }
+
+  let user = "";
+
+  try {
+    user = await User.findOne({ userId: userId });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to fetch the user document");
+    console.error("Error: ", error);
+  }
+
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
+
+  let list = user.lists.find((list) => list.listId === listId);
+
+  if (!list) {
+    return res.status(404).json({
+      message: "List not found",
+    });
+  }
+
+  const oldName = list.title;
+  list.title = newName;
+
+  try {
+    await user.save();
+
+    res
+      .status(200)
+      .json({ message: `List '${oldName}' was renamed to '${list.title}'` });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to update the list name");
+    console.error("Error: ", error);
+  }
+});
 
 // delete a list
+app.delete("/api/lists/:listId", async (req, res) => {
+  // my goal is to use request params: userId, list id, and delete the list
+  // in positive case i will return 200 status and the item
+  // negative scenarios: user not found, list not found, item not found
+  // in negative scenario, return 400 status and a message
+  // what else can go wrong?
+  // hint: if the endpoint has db operations, db can return error. this is an example of a server error,
+  // so i will return 500 status and a message
+  const userId = req.body.userId;
+  const listId = req.params.listId;
+
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
+  }
+
+  if (!listId || listId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid listId",
+    });
+  }
+
+  let user = "";
+
+  try {
+    user = await User.findOne({ userId: userId });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to fetch the user document");
+    console.error("Error: ", error);
+  }
+
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
+
+  const lists = user.lists;
+
+  if (!lists || lists.length === 0) {
+    return res.status(404).json({
+      message: "No lists found",
+    });
+  }
+
+  const list = lists.find((list) => list.listId === listId);
+
+  if (!list) {
+    return res.status(404).json({
+      message: "List not found",
+    });
+  }
+
+  user.lists = lists.filter((list) => list.listId !== listId);
+
+  try {
+    await user.save();
+    res.status(200).json({ message: `${list.title} was deleted successfully` });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to delete the list from the user");
+    console.error("Error: ", error);
+  }
+});
 
 // multiple lists
 // get all lists for a user
@@ -127,17 +265,6 @@ app.get("/api/lists", async (req, res) => {
     console.error("Error: ", error);
   }
 });
-
-// use request params: userId, listId, itemId and get the item
-// in positive case i will return 200 status and the list
-// in negative case i will return ...
-// negative cases: invalid userId, invalid listId, list not found
-// i think that we are not accepting anything for list name, it can be invalid
-// no empty strings, no special characters, no more than 20 characters
-// btw, in this case i will return 400 status and a message
-// server errors?
-// hint: if the endpoint has db operations, db can return error. this is an example of a server error,
-// so i will return 500 status and a message
 
 //single item
 
@@ -327,14 +454,6 @@ app.delete("/api/lists/:listId/items/:itemId", async (req, res) => {
       .send("An error occurred while trying to delete the item from the list");
     console.error("Error: ", error);
   }
-
-  // my goal is to use request params: userId, list id, item name/id? and delete the item
-  // in positive case i will return 200 status and the item
-  // negative scenarios: user not found, list not found, item not found
-  // in negative scenario, return 400 status and a message
-  // what else can go wrong?
-  // hint: if the endpoint has db operations, db can return error. this is an example of a server error,
-  // so i will return 500 status and a message
 });
 
 // multiple items

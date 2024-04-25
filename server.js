@@ -457,39 +457,61 @@ app.delete("/api/lists/:listId/items/:itemId", async (req, res) => {
 });
 
 // multiple items
+app.get("/api/items/unique", async (req, res) => {
+  const userId = req.body.userId;
 
-// Get all items from a list
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
+  }
 
-// Get a set of items for a user
-// app.get('/api/items/unique', async (req, res) => {
-//   try {
-//     const userId = req.query.userId; // Assuming userId is passed as a query parameter
+  let user = "";
 
-//     if (!userId) {
-//       return res.status(400).send('User ID is required');
-//     }
+  try {
+    user = await User.findOne({ userId: userId });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to fetch the user document");
+  }
 
-//     // Fetch the user document by userId
-//     const user = await User.findOne({ userId: userId });
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
 
-//     if (!user) {
-//       return res.status(404).send('User not found');
-//     }
+  const lists = user.lists;
 
-//     // Extract items from all lists and flatten the array
-//     const allItems = user.lists.flatMap(list => list.items);
+  if (!lists || lists.length === 0) {
+    return res.status(404).json({
+      message: "No lists found",
+    });
+  }
 
-//     // Create a set to get unique items based on the item name
-//     const uniqueItems = Array.from(new Set(allItems.map(item => item.name)))
-//       .map(name => {
-//         // Find and return the first item that matches the unique name
-//         return allItems.find(item => item.name === name);
-//       });
+  let itemNames = [];
 
-//     // Send the unique items as a response
-//     res.json(uniqueItems);
-//   } catch (error) {
-//     console.error('Error in /api/items/unique:', error);
-//     res.status(500).send('An error occurred while fetching unique items');
-//   }
-// });
+  // for each item, i need to take the name and put into the itemNames array
+  // i check if the list has items
+  lists.forEach((list) => {
+    if (list.items.length > 0) {
+      list.items.forEach((item) => {
+        itemNames.push(item.name);
+      });
+    }
+  });
+
+  uniqueItems = new Set(itemNames);
+
+  res.status(200).json([...uniqueItems]);
+});
+
+// Get a set of items for a user - only unique items
+
+// my goal is to use request params: userId
+// get all items from all lists for a user
+// in positive case i will return 200 status and the list of unique items
+// validate userId 400 status and a message
+// negative scenarios: user not found, lists not found, items not found - 404 status and a message
+// 500 status and a message for server error when fetching and updating the user

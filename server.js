@@ -384,7 +384,174 @@ app.get("/api/lists/:listId/items/:itemId", async (req, res) => {
   res.status(200).json(item);
 });
 
-// update an item in a list (rename, change quantity, etc.)
+// rename an item in a list
+app.patch("/api/lists/:listId/items/:itemId/name", async (req, res) => {
+  const userId = req.body.userId;
+  const listId = req.params.listId;
+  const itemId = req.params.itemId;
+  const newName = req.body.name;
+
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
+  }
+
+  if (!listId || listId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid listId",
+    });
+  }
+
+  if (!itemId || itemId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid itemId",
+    });
+  }
+
+  if (
+    !newName ||
+    newName.length > 20 ||
+    newName.trim().length === 0 ||
+    !newName.match(/^[a-zA-Z0-9 ,.!\/:-?]+$/)
+  ) {
+    return res.status(400).json({
+      message: `Invalid name - must be a string of max 20 characters
+           and may contain letters, numbers, spaces, 
+           and the following symbols: , . ! / : - ?`,
+    });
+  }
+
+  let user = "";
+
+  try {
+    user = await User.findOne({ userId: userId });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to fetch the user document");
+    console.error("Error: ", error);
+  }
+
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
+
+  const list = user.lists.find((list) => list.listId === listId);
+
+  if (!list) {
+    return res.status(404).json({
+      message: "List not found",
+    });
+  }
+
+  const item = list.items.find((item) => item.itemId === itemId);
+
+  if (!item) {
+    return res.status(404).json({
+      message: "Item not found",
+    });
+  }
+
+  const oldName = item.name;
+
+  item.name = newName;
+
+  try {
+    await user.save();
+    res
+      .status(200)
+      .json({ message: `Item '${oldName}' was renamed to '${item.name}'` });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to update the item name");
+    console.error("Error: ", error);
+  }
+});
+
+// update the quantity of an item in a list
+app.patch("/api/lists/:listId/items/:itemId/quantity", async (req, res) => {
+  const userId = req.body.userId;
+  const listId = req.params.listId;
+  const itemId = req.params.itemId;
+  const newQuantity = req.body.quantity;
+
+  if (!userId || userId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid userId",
+    });
+  }
+
+  if (!listId || listId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid listId",
+    });
+  }
+
+  if (!itemId || itemId.trim().length === 0) {
+    return res.status(400).json({
+      message: "Invalid itemId",
+    });
+  }
+
+  if (!newQuantity || newQuantity <= 0) {
+    return res.status(400).json({
+      message: "Invalid quantity - must be a positive number",
+    });
+  }
+
+  let user = "";
+
+  try {
+    user = await User.findOne({ userId: userId });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to fetch the user document");
+    console.error("Error: ", error);
+  }
+
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
+
+  const list = user.lists.find((list) => list.listId === listId);
+
+  if (!list) {
+    return res.status(404).json({
+      message: "List not found",
+    });
+  }
+
+  const item = list.items.find((item) => item.itemId === itemId);
+
+  if (!item) {
+    return res.status(404).json({
+      message: "Item not found",
+    });
+  }
+
+  const oldQuantity = item.quantity;
+
+  item.quantity = newQuantity;
+
+  try {
+    await user.save();
+    res.status(200).json({
+      message: `Quantity of ${item.name} was updated from ${oldQuantity} to ${item.quantity}`,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send("An error occurred while trying to update the item quantity");
+    console.error("Error: ", error);
+  }
+});
 
 // delete an item from a list
 app.delete("/api/lists/:listId/items/:itemId", async (req, res) => {
@@ -457,6 +624,8 @@ app.delete("/api/lists/:listId/items/:itemId", async (req, res) => {
 });
 
 // multiple items
+
+// get an array of unique item names for a user
 app.get("/api/items/unique", async (req, res) => {
   const userId = req.body.userId;
 
@@ -492,8 +661,6 @@ app.get("/api/items/unique", async (req, res) => {
 
   let itemNames = [];
 
-  // for each item, i need to take the name and put into the itemNames array
-  // i check if the list has items
   lists.forEach((list) => {
     if (list.items.length > 0) {
       list.items.forEach((item) => {
@@ -506,12 +673,3 @@ app.get("/api/items/unique", async (req, res) => {
 
   res.status(200).json([...uniqueItems]);
 });
-
-// Get a set of items for a user - only unique items
-
-// my goal is to use request params: userId
-// get all items from all lists for a user
-// in positive case i will return 200 status and the list of unique items
-// validate userId 400 status and a message
-// negative scenarios: user not found, lists not found, items not found - 404 status and a message
-// 500 status and a message for server error when fetching and updating the user

@@ -14,21 +14,22 @@ app.listen(PORT, () => {
 
 const User = require("./models/schema.js");
 
+// Hardcoded user ID for testing
+const HARDCODED_USER_ID = "u126";
+
 // single list
 
 // Create a new list for a user
 app.post("/api/lists", async (req, res) => {
-  const userId = req.body.userId;
+  const userId = HARDCODED_USER_ID;
   let user = await User.findOne({ userId: userId });
 
-  // tmp kosteel
   if (!user) {
     user = await User.create({ userId: userId });
   }
 
   const name = req.body.name;
 
-  // check if name is valid: not empty, not more than 20 characters
   if (!name || name.length > 20 || name.trim().length === 0) {
     return res.status(400).json({
       message: "Invalid name - must be a string of max 20 characters",
@@ -59,9 +60,8 @@ app.post("/api/lists", async (req, res) => {
 });
 
 // get a single list by id
-// use request params: userId, listId and get the list
 app.get("/api/lists/:listId", async (req, res) => {
-  const userId = req.body.userId;
+  const userId = HARDCODED_USER_ID;
   const listId = req.params.listId;
 
   if (!userId || userId.trim().length === 0) {
@@ -97,8 +97,7 @@ app.get("/api/lists/:listId", async (req, res) => {
 
 // rename a list
 app.patch("/api/lists/:listId", async (req, res) => {
-  // my goal is to use request params: userId, listId, and update the list name
-  const userId = req.body.userId;
+  const userId = HARDCODED_USER_ID;
   const listId = req.params.listId;
   const newName = req.body.name;
 
@@ -169,14 +168,7 @@ app.patch("/api/lists/:listId", async (req, res) => {
 
 // delete a list
 app.delete("/api/lists/:listId", async (req, res) => {
-  // my goal is to use request params: userId, list id, and delete the list
-  // in positive case i will return 200 status and the item
-  // negative scenarios: user not found, list not found, item not found
-  // in negative scenario, return 400 status and a message
-  // what else can go wrong?
-  // hint: if the endpoint has db operations, db can return error. this is an example of a server error,
-  // so i will return 500 status and a message
-  const userId = req.body.userId;
+  const userId = HARDCODED_USER_ID;
   const listId = req.params.listId;
 
   if (!userId || userId.trim().length === 0) {
@@ -237,16 +229,9 @@ app.delete("/api/lists/:listId", async (req, res) => {
   }
 });
 
-// multiple lists
 // get all lists for a user
 app.get("/api/lists", async (req, res) => {
-  const userId = req.body.userId;
-
-  if (!userId || userId.trim().length === 0) {
-    return res.status(400).json({
-      message: "Invalid userId",
-    });
-  }
+  const userId = HARDCODED_USER_ID;
 
   try {
     const user = await User.findOne({ userId: userId });
@@ -266,13 +251,12 @@ app.get("/api/lists", async (req, res) => {
   }
 });
 
-//single item
+// single item
 
 // add a new item to a list
 app.post("/api/lists/:listId/items", async (req, res) => {
   try {
-    // request params: listId, userId, name, quantity
-    const userId = req.body.userId;
+    const userId = HARDCODED_USER_ID;
     const listId = req.params.listId;
     const name = req.body.name;
     const quantity = req.body.quantity;
@@ -315,11 +299,6 @@ app.post("/api/lists/:listId/items", async (req, res) => {
     await user.save();
 
     res.status(201).json({ message: `${item.name} was added` });
-    // validate name and quantity
-    // negative case: return 400 status and a message
-    // what else can go wrong?
-    // hint: if the endpoint has db operations, db can return error. this is an example of a server error,
-    // so i will return 500 status and a message
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -328,7 +307,7 @@ app.post("/api/lists/:listId/items", async (req, res) => {
 
 // get a single item by id
 app.get("/api/lists/:listId/items/:itemId", async (req, res) => {
-  const userId = req.body.userId;
+  const userId = HARDCODED_USER_ID;
   const listId = req.params.listId;
   const itemId = req.params.itemId;
 
@@ -352,41 +331,41 @@ app.get("/api/lists/:listId/items/:itemId", async (req, res) => {
 
   try {
     const user = await User.findOne({ userId: userId });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const list = user.lists.find((list) => list.listId === listId);
+
+    if (!list) {
+      return res.status(404).json({
+        message: "List not found",
+      });
+    }
+
+    const item = list.items.find((item) => item.itemId === itemId);
+
+    if (!item) {
+      return res.status(404).json({
+        message: "Item not found",
+      });
+    }
+
+    res.status(200).json(item);
   } catch (error) {
     res
       .status(500)
       .send("An error occurred while trying to fetch the user document");
     console.error("Error: ", error);
   }
-
-  if (!user) {
-    return res.status(404).json({
-      message: "User not found",
-    });
-  }
-
-  const list = user.lists.find((list) => list.listId === listId);
-
-  if (!list) {
-    return res.status(400).json({
-      message: "List not found",
-    });
-  }
-
-  const item = list.items.find((item) => item.itemId === itemId);
-
-  if (!item) {
-    return res.status(400).json({
-      message: "Item not found",
-    });
-  }
-
-  res.status(200).json(item);
 });
 
 // rename an item in a list
 app.patch("/api/lists/:listId/items/:itemId/name", async (req, res) => {
-  const userId = req.body.userId;
+  const userId = HARDCODED_USER_ID;
   const listId = req.params.listId;
   const itemId = req.params.itemId;
   const newName = req.body.name;
@@ -416,9 +395,7 @@ app.patch("/api/lists/:listId/items/:itemId/name", async (req, res) => {
     !newName.match(/^[a-zA-Z0-9 ,.!\/:-?]+$/)
   ) {
     return res.status(400).json({
-      message: `Invalid name - must be a string of max 20 characters
-           and may contain letters, numbers, spaces, 
-           and the following symbols: , . ! / : - ?`,
+      message: `Invalid name - must be a string of max 20 characters and may contain letters, numbers, spaces, and the following symbols: , . ! / : - ?`,
     });
   }
 
@@ -474,7 +451,7 @@ app.patch("/api/lists/:listId/items/:itemId/name", async (req, res) => {
 
 // update the quantity of an item in a list
 app.patch("/api/lists/:listId/items/:itemId/quantity", async (req, res) => {
-  const userId = req.body.userId;
+  const userId = HARDCODED_USER_ID;
   const listId = req.params.listId;
   const itemId = req.params.itemId;
   const newQuantity = req.body.quantity;
@@ -555,7 +532,7 @@ app.patch("/api/lists/:listId/items/:itemId/quantity", async (req, res) => {
 
 // delete an item from a list
 app.delete("/api/lists/:listId/items/:itemId", async (req, res) => {
-  const userId = req.body.userId;
+  const userId = HARDCODED_USER_ID;
   const listId = req.params.listId;
   const itemId = req.params.itemId;
 
@@ -627,49 +604,42 @@ app.delete("/api/lists/:listId/items/:itemId", async (req, res) => {
 
 // get an array of unique item names for a user
 app.get("/api/items/unique", async (req, res) => {
-  const userId = req.body.userId;
-
-  if (!userId || userId.trim().length === 0) {
-    return res.status(400).json({
-      message: "Invalid userId",
-    });
-  }
-
-  let user = "";
+  const userId = HARDCODED_USER_ID;
 
   try {
-    user = await User.findOne({ userId: userId });
+    const user = await User.findOne({ userId: userId });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const lists = user.lists;
+
+    if (!lists || lists.length === 0) {
+      return res.status(404).json({
+        message: "No lists found",
+      });
+    }
+
+    let itemNames = [];
+
+    lists.forEach((list) => {
+      if (list.items.length > 0) {
+        list.items.forEach((item) => {
+          itemNames.push(item.name);
+        });
+      }
+    });
+
+    uniqueItems = new Set(itemNames);
+
+    res.status(200).json([...uniqueItems]);
   } catch (error) {
     res
       .status(500)
       .send("An error occurred while trying to fetch the user document");
+    console.error("Error: ", error);
   }
-
-  if (!user) {
-    return res.status(404).json({
-      message: "User not found",
-    });
-  }
-
-  const lists = user.lists;
-
-  if (!lists || lists.length === 0) {
-    return res.status(404).json({
-      message: "No lists found",
-    });
-  }
-
-  let itemNames = [];
-
-  lists.forEach((list) => {
-    if (list.items.length > 0) {
-      list.items.forEach((item) => {
-        itemNames.push(item.name);
-      });
-    }
-  });
-
-  uniqueItems = new Set(itemNames);
-
-  res.status(200).json([...uniqueItems]);
 });

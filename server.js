@@ -251,7 +251,39 @@ app.get("/api/lists", async (req, res) => {
   }
 });
 
-// single item
+// search for items by name
+app.get("/api/items/search", async (req, res) => {
+  const searchTerm = req.query.q;
+
+  if (!searchTerm || searchTerm.trim().length === 0) {
+    return res.status(400).json({ message: "Search term is required" });
+  }
+
+  try {
+    const user = await User.findOne({ userId: HARDCODED_USER_ID });
+    if (!user) {
+      return res.statur(404).json({ message: "User not found" });
+    }
+
+    const lists = user.lists;
+    if (!lists || lists.length === 0) {
+      return res.status(404).json({ message: "No lists found" });
+    }
+
+    const items = lists.reduce((acc, list) => {
+      return acc.concat(list.items);
+    }, []);
+
+    const filteredItems = items.filter((item) =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    res.status(200).json(filteredItems);
+  } catch (error) {
+    console.error("Error fetching items:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 // add a new item to a list
 app.post("/api/lists/:listId/items", async (req, res) => {
@@ -298,7 +330,7 @@ app.post("/api/lists/:listId/items", async (req, res) => {
     list.items.push(item);
     await user.save();
 
-    res.status(201).json({ message: `${item.name} was added` });
+    res.status(201).json(item);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -600,7 +632,7 @@ app.delete("/api/lists/:listId/items/:itemId", async (req, res) => {
   }
 });
 
-// multiple items
+// multiple itemsx
 
 // get an array of unique item names for a user
 app.get("/api/items/unique", async (req, res) => {
